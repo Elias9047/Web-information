@@ -1,0 +1,8 @@
+Git Clone
+
+1.go to github on the project
+2.click code option and copy Https link
+3.open folder when you save the project on your device 
+4.then open terminal 
+5.and write the terminal = git clone paste the https link
+Example : git clone https://github.com/amsbarik/go-learn-bangladesh.git
