@@ -1,0 +1,73 @@
+// data store and Image manage code
+
+
+
+ public function store(Request $request)
+    {
+
+        $validated = $request->validate([
+            'title' => 'required',
+            'slug' => 'required|unique:courses',
+            'category_id' => 'required',
+            // 'batch_id' => 'required',
+            'teacher_id' => 'required',
+            'price' => 'required',
+            'regular_price' => 'required',
+            'image' => 'required',
+            'admission_starting_date' => 'required',
+            'admission_ending_date' => 'required',
+            'class_start' => 'required',
+            'time' => 'required',
+        ]);
+
+
+        $data = new Course();
+        $data->category_id = $request->category_id;
+        $data->teacher_id = $request->teacher_id;
+        // $data->batch_id = $request->batch_id;
+        $data->title = $request->title;
+        // $data->title_en = $request->title_en;
+        $data->slug = $request->slug;
+        $data->offline_or_online = $request->offline_or_online;
+        $data->admission_starting_date = $request->admission_starting_date;
+        $data->admission_ending_date = $request->admission_ending_date;
+        $data->class_start = $request->class_start;
+        $data->time = $request->time;
+        $data->student_or_pro = $request->student_or_pro;
+        $data->price = $request->price;
+        $data->regular_price = $request->regular_price;
+        $data->discount_percent = $request->discount_percent;
+        $data->course_duration = $request->course_duration;
+        $data->day = $request->day;
+        $data->total_enrolled = $request->total_enrolled;
+        $data->lectures = $request->lectures;
+        $data->quizzes = $request->quizzes;
+        $data->skill_level = $request->skill_level;
+        $data->assessments = $request->assessments;
+        // $data->short_description = $request->short_description;
+        $data->description_long = $request->description_long;
+        $data->description = $request->description;
+        // $data->description_en = $request->description_en;
+        $data->status = $request->status;
+
+        $image = $request->file('image');
+        if($image)
+        {
+            $image_name= uniqid();
+            $ext = strtolower($image->getClientOriginalExtension());
+            $image_full_name = $image_name. '.' .$ext;
+            $upload_path = 'images/course/';
+            $image_url = $upload_path.$image_full_name;
+            $success = $image->move($upload_path, $image_full_name);
+            if($success)
+            {
+                $data->image = $image_url;
+            }
+
+        }
+
+        $data->save();
+
+        return redirect()->back()->withSuccess('Course saved successfully');
+
+    }
