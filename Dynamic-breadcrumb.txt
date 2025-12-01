@@ -1,0 +1,82 @@
+Dynamic Breadcrumb create using Laravel helper function  
+
+
+
+✅ Step–1: Helpers ফাইল তৈরি
+
+app/Helpers/breadcrumb.php নামে একটা ফাইল তৈরি করো (যদি না থাকে)।
+তার ভেতরে লিখো:
+
+
+<?php
+
+use Illuminate\Support\Facades\Request;
+
+if (!function_exists('generate_breadcrumbs')) {
+    function generate_breadcrumbs()
+    {
+        $segments = Request::segments();
+        $breadcrumbs = [];
+
+        // Always add Home
+        $breadcrumbs[] = [
+            'name' => 'Home',
+            'url'  => url('/')
+        ];
+
+        $url = '';
+        foreach ($segments as $index => $segment) {
+            $url .= '/' . $segment;
+            $breadcrumbs[] = [
+                'name' => ucfirst(str_replace('-', ' ', $segment)),
+                'url'  => $index < count($segments) - 1 ? url($url) : '' // last item = active
+            ];
+        }
+
+        return $breadcrumbs;
+    }
+}
+
+
+
+
+✅ Step–2: composer.json এ Autoload যোগ করো
+
+composer.json ফাইলের "autoload" সেকশনে এটা থাকতে হবে:
+
+"autoload": {
+    "psr-4": {
+        "App\\": "app/"
+    },
+    "files": [
+        "app/Helpers/breadcrumb.php"
+    ]
+}
+
+
+✅ Step–3: Dump Autoload
+
+টার্মিনালে রান করো:
+
+composer dump-autoload
+
+
+
+✅ Step–4: Blade ফাইলে ব্যবহার করো
+
+তোমার  filename.blade.php এ এভাবে ব্যবহার করো:
+
+
+<ol class="breadcrumb justify-content-center bg-transparent mb-0" style="font-family: 'Poppins', sans-serif;">
+    @foreach(generate_breadcrumbs() as $breadcrumb)
+        @if ($breadcrumb['url'])
+            <li class="breadcrumb-item">
+                <a href="{{ $breadcrumb['url'] }}" class="text-white-50">{{ $breadcrumb['name'] }}</a>
+            </li>
+        @else
+            <li class="breadcrumb-item active text-white" aria-current="page">
+                {{ $breadcrumb['name'] }}
+            </li>
+        @endif
+    @endforeach
+</ol>
