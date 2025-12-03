@@ -1,0 +1,361 @@
+ 
+Laravel 12 API Authentication with Sanctum and CRUD
+In this comprehensive step-by-step guide, you'll learn how to build a secure Laravel 12 RESTful API using Laravel Sanctum for token-based authentication. We'll also implement full CRUD operations for a Post model, including creating, reading, updating, and deleting posts. 
+
+
+
+This guide is ideal for developers who want to build modern APIs for single-page applications (SPAs), mobile  apps, or other frontend clients.
+
+Prerequisites
+Make sure you have the following installed:
+
+PHP 8.1+
+
+Composer
+
+Laravel 12
+
+MySQL or MariaDB
+
+Postman (for API testing)
+
+
+
+
+
+Step 1: Create a New Laravel Project
+composer create-project laravel/laravel laravel-sanctum-api
+
+
+Step 2: Install Sanctum
+composer require laravel/sanctum
+
+
+Step 3: Update User Model
+In app/Models/User.php:
+
+use Laravel\Sanctum\HasApiTokens;
+
+class User extends Authenticatable
+{
+    use HasApiTokens, HasFactory, Notifiable;
+}
+
+
+
+
+
+
+Step 4: Configure Database
+In your .env file:
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=crud_api
+DB_USERNAME=root
+DB_PASSWORD=
+Then run:
+
+php artisan migrate
+Run this command in your terminal:
+
+php artisan install:api
+This command (if supported in your Laravel version) will automatically:
+
+Create API route files (in routes/api.php)
+
+
+
+
+
+
+
+Step 5: Define API Routes
+In routes/api.php:
+
+use App\Http\Controllers\API\AuthenticationController;
+use App\Http\Controllers\PostController;
+
+Route::post('register', [AuthenticationController::class, 'register']);
+Route::post('login', [AuthenticationController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('user', [AuthenticationController::class, 'userInfo']);
+    Route::post('logout', [AuthenticationController::class, 'logOut']);
+    Route::apiResource('posts', PostController::class);
+});
+
+
+
+
+
+
+
+Step 6: Create Authentication Controller
+php artisan make:controller API/AuthenticationController
+In app/Http/Controllers/API/AuthenticationController.php
+
+namespace App\Http\Controllers\API;
+
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
+
+class AuthenticationController extends Controller
+{
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|min:3',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|min:6'
+        ]);
+
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password)
+        ]);
+
+        return response()->json(['message' => 'User registered successfully']);
+    }
+
+    public function login(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required'
+        ]);
+
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+
+        $token = Auth::user()->createToken('API Token')->plainTextToken;
+
+        return response()->json(['token' => $token]);
+    }
+
+    public function userInfo(Request $request)
+    {
+        return response()->json($request->user());
+    }
+
+    public function logOut(Request $request)
+    {
+        $request->user()->tokens()->delete();
+        return response()->json(['message' => 'Logged out successfully']);
+    }
+}
+
+
+
+
+
+
+
+Step 7: Create Post Model, Migration, and Controller
+php artisan make:model Post -mcr
+Update database/migrations/xxxx_xx_xx_create_posts_table.php
+
+public function up(): void
+{
+    Schema::create('posts', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('user_id')->constrained()->onDelete('cascade');
+        $table->string('title')->nullable();
+        $table->text('body')->nullable();
+        $table->timestamps();
+    });
+}
+Run the migration
+
+php artisan migrate
+
+
+
+
+
+
+
+
+
+
+Step 8: Implement PostController Logic
+Edit app/Http/Controllers/PostController.php
+
+namespace App\Http\Controllers;
+
+use App\Models\Post;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+
+class PostController extends Controller
+{
+    public function index()
+    {
+        return response()->json(Post::with('user')->latest()->get());
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'body' => 'required|string',
+        ]);
+
+        $post = $request->user()->posts()->create($request->only('title', 'body'));
+
+        return response()->json(['message' => 'Post created', 'post' => $post]);
+    }
+
+    public function show(Post $post)
+    {
+        return response()->json($post);
+    }
+
+    public function update(Request $request, Post $post)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'body' => 'required|string',
+        ]);
+
+        $post->update($request->only('title', 'body'));
+
+        return response()->json(['message' => 'Post updated', 'post' => $post]);
+    }
+
+    public function destroy(Post $post)
+    {
+        $post->delete();
+        return response()->json(['message' => 'Post deleted']);
+    }
+}
+
+
+
+
+
+
+
+
+
+Step 9: Add Relationship to User Model
+In app/Models/User.php:
+
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Post;
+
+public function posts(): HasMany
+{
+    return $this->hasMany(Post::class);
+}
+In app/Models/Post.php:
+
+use App\Models\User;
+
+// Allow mass assignment for these fields
+protected $fillable = ['user_id', 'title', 'body'];
+
+public function user()
+{
+    return $this->belongsTo(User::class);
+}
+
+
+
+
+
+
+
+
+
+
+Step 10: Run the Laravel Development Server
+php artisan serve
+
+
+
+
+
+
+
+
+
+
+Step 11: Test API with Postman
+Auth Endpoints
+Action	Method	URL	Auth Header
+Register	POST	http://localhost:8000/api/register	–
+Login	POST	http://localhost:8000/api/login	–
+Get User	GET	http://localhost:8000/api/user	Bearer YOUR_TOKEN
+Logout	POST	http://localhost:8000/api/logout	Bearer YOUR_TOKEN
+Register Example:
+
+POST http://localhost:8000/api/register
+Content-Type: application/json
+
+{
+  "name": "StarCode Kh",
+  "email": "starcodekh@example.com",
+  "password": "password123"
+}
+
+
+
+
+
+
+
+
+Login Example:
+
+POST http://localhost:8000/api/login
+Content-Type: application/json
+
+{
+  "email": "starcodekh@example.com",
+  "password": "password123"
+}
+Use the returned token as:
+
+Authorization: Bearer YOUR_TOKEN
+Post CRUD Endpoints
+Action	Method	URL	Auth Header
+Get All Posts	GET	http://localhost:8000/api/posts	Bearer YOUR_TOKEN
+Create Post	POST	http://localhost:8000/api/posts	Bearer YOUR_TOKEN
+View Post	GET	http://localhost:8000/api/posts/{id}	Bearer YOUR_TOKEN
+Update Post	PUT	http://localhost:8000/api/posts/{id}	Bearer YOUR_TOKEN
+Delete Post	DELETE	http://localhost:8000/api/posts/{id}	Bearer YOUR_TOKEN
+Create Post Example:
+
+{
+  "title": "My First Post",
+  "body": "This is the content."
+}
+Update Post Example:
+
+{
+  "title": "Updated Title",
+  "body": "Updated body"
+}
+
+
+
+
+Summary
+You now have a fully functional Laravel 12 REST API that supports:
+
+Secure user registration and login
+
+Token-based API access via Sanctum
+
+Authenticated user information and logout
+
+Full CRUD operations for posts
+
+Authorization for all sensitive actions
